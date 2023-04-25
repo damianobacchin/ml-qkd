@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from raman import raman_cross_section as raman_cross_section_tab
 
-from config import config_1, start_frequency, grid_spacing, c0
+from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0
 
 quantum_receiver_bandwidth = 0.6e-9 # (0.6-0.8)nm
 fiber_length = 50 # (1-100)km
@@ -32,8 +32,16 @@ def raman_scattering(config):
     return power_input * exp(-fiber_attenuation*fiber_length) + _sum
 
 def fitness_function(config):
-    pass
+    rs = raman_scattering(config)
+    # TODO four wave mixing
+    # TODO adjacent channel crosstalk
+    return rs
 
 
-noise = raman_scattering(config_1)
+# Create config
+config = np.zeros(n_total_channels)
+config[:n_data_channels] = 1
+config[n_data_channels] = 2
+
+noise = fitness_function(config)
 print(noise)
