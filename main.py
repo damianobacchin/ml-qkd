@@ -2,13 +2,9 @@ from math import exp
 import numpy as np
 from matplotlib import pyplot as plt
 from raman import raman_cross_section as raman_cross_section_tab
+from random import randint
 
-from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0
-
-quantum_receiver_bandwidth = 0.6e-9 # (0.6-0.8)nm
-fiber_length = 50 # (1-100)km
-fiber_attenuation = 0.2 # (0.16-0.185-0.195-0.21-0.3)dB/km
-power_input = 1
+from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0, quantum_receiver_bandwidth, fiber_length, fiber_attenuation, power_input
 
 # plt.plot(raman_cross_section.keys(), raman_cross_section.values())
 # plt.show()
@@ -27,7 +23,7 @@ def raman_scattering(config):
     quantum_channel = np.where(config == 2)[0][0]
     _sum = 0
     for channel in data_channels:
-        _sum += raman_cross_section(grid_wavelength(channel), grid_wavelength(quantum_channel))
+        _sum += raman_cross_section(grid_wavelength(channel), grid_wavelength(quantum_channel)) * quantum_receiver_bandwidth
 
     return power_input * exp(-fiber_attenuation*fiber_length) + _sum
 
@@ -38,10 +34,36 @@ def fitness_function(config):
     return rs
 
 
+
+def simulated_annealing(init_config):
+    config = init_config.copy()
+
+    for t in np.linspace(100, 1, 10000):
+        idx_a = randint(0, n_total_channels-1)
+        idx_b = randint(0, n_total_channels-1)
+
+        new_config = config.copy()
+        new_config[idx_a] = config[idx_b]
+        new_config[idx_b] = config[idx_a]
+
+        fitness_init = fitness_function(config)
+        fitness_new = fitness_function(new_config)
+
+        delta = fitness_new - fitness_init
+
+        if delta < 0:
+            config = new_config
+        else:
+            rand = randint(0, 100)
+            if rand < exp(delta/t):
+                config = new_config
+
+    return config
+
 # Create config
-config = np.zeros(n_total_channels)
+config = np.zeros(n_total_channels, dtype=int)
 config[:n_data_channels] = 1
 config[n_data_channels] = 2
 
-noise = fitness_function(config)
-print(noise)
+result = simulated_annealing(config)
+print(result)
