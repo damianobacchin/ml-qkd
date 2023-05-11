@@ -1,10 +1,11 @@
-from math import exp
+from math import exp, pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 from raman import raman_cross_section as raman_cross_section_tab
 from random import randint
 
-from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0, quantum_receiver_bandwidth, fiber_length, fiber_attenuation, power_input
+from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0, quantum_receiver_bandwidth, fiber_length, fiber_attenuation, power_input,\
+    fiber_dispersion, fiber_dispersion_slope, third_order_nonlinear_coefficient, degeneracy_param
 
 # plt.plot(raman_cross_section.keys(), raman_cross_section.values())
 # plt.show()
@@ -27,11 +28,33 @@ def raman_scattering(config):
 
     return power_input * exp(-fiber_attenuation*fiber_length) + _sum
 
+
+def four_wave_mixing(config):
+    data_channels = np.where(config == 1)[0]
+    quantum_channel = np.where(config == 2)[0][0]
+
+    quantum_frequency = c0 / grid_wavelength(quantum_channel)
+    fwm_noise = 0
+    for i in data_channels:
+        ch_i_frequency = c0 / grid_wavelength(i)
+        for j in data_channels:
+            ch_j_frequency = c0 / grid_wavelength(j)
+            for k in data_channels:
+                ch_k_frequency = c0 / grid_wavelength(k)
+                if ch_i_frequency + ch_j_frequency - ch_k_frequency == quantum_frequency:
+                    quantum_wavelength = grid_wavelength(quantum_channel)
+                    matching_factor = ( 2*pi*pow(quantum_wavelength, 2)/c0 ) * abs(ch_i_frequency-ch_k_frequency) * abs(ch_j_frequency-ch_k_frequency) * ( fiber_dispersion + fiber_dispersion_slope * pow(quantum_wavelength, 2)/c0 * ( abs(ch_i_frequency-ch_k_frequency) + abs(ch_j_frequency-ch_k_frequency) ) )
+                    phase_matching_efficiency = fiber_attenuation**2/(fiber_attenuation**2 + matching_factor**2) * ( 1 + 4*exp(-fiber_attenuation*fiber_length) * ( pow(sin(matching_factor * fiber_length / 2), 2) / (1 - exp(-fiber_attenuation*fiber_length))**2 ) )
+                    power_output = phase_matching_efficiency * third_order_nonlinear_coefficient**2 * power_input**3 * degeneracy_param**2 * exp(-fiber_attenuation*fiber_length) * ( (1 - exp(-fiber_attenuation*fiber_length))**2 / 9 * fiber_attenuation**2 )
+                    fwm_noise += power_output
+
+    return fwm_noise
+
 def fitness_function(config):
     rs = raman_scattering(config)
-    # TODO four wave mixing
+    fwm = four_wave_mixing(config)
     # TODO adjacent channel crosstalk
-    return rs
+    return rs# + fwm
 
 
 
