@@ -7,6 +7,7 @@ from config import n_total_channels
 class Network:
     def __init__(self):
         self.nodes = []
+        self.links = []
         self.traffic = 1
     
     def breadth_first_search(self, source, destination): # Con mappa dei predecessori
@@ -30,7 +31,7 @@ class Network:
         time = np.zeros(t, dtype=list)
 
         for i in range(t):
-            requests = randint(0, 10*r)
+            requests = randint(0, 100*r)
             timeslot = []
             for j in range(requests):
                 source = randint(0, nodes_number-1)
@@ -43,9 +44,24 @@ class Network:
         return time
 
     
-    def simulate(self):
-        # Random traffic generation
-        pass
+    def run_simulation(self, traffic):
+        for t in traffic:
+
+            for link in self.links:
+                link.config = np.zeros(n_total_channels, dtype=int)
+
+            for request in t:
+                source = self.nodes[request[0]]
+                destination = self.nodes[request[1]]
+                solution = self.breadth_first_search(source, destination)
+
+                if solution is not None:
+                    for link in solution:
+                        pos = np.where(link.config == 0)[0][0]
+                        link.config[pos] = 1
+                else:
+                    print('Path not found')
+        return
 
     
 
@@ -91,6 +107,7 @@ if __name__ == "__main__":
         for i in range(len(elem)):
             if elem[i] == 1:
                 link = Link(network.nodes[incidence_matrix.index(elem)], network.nodes[i])
+                network.links.append(link)
                 node = network.nodes[incidence_matrix.index(elem)]
                 node.links.append(link)
 
@@ -101,4 +118,4 @@ if __name__ == "__main__":
     #     link.config[pos] = 1
     
     time = network.generate_traffic()
-    print(time)
+    network.run_simulation(traffic=time)
