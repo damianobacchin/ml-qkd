@@ -1,5 +1,6 @@
 import numpy as np
 from collections import deque
+from random import randint
 from config import n_total_channels
 
 
@@ -8,7 +9,7 @@ class Network:
         self.nodes = []
         self.traffic = 1
     
-    def breadth_first_search(self, source, destination):
+    def breadth_first_search(self, source, destination): # Con mappa dei predecessori
         queue = deque([(source, [])])
         visited = set([])
         while queue:
@@ -16,13 +17,36 @@ class Network:
             if node not in visited:
                 visited.add(node)
                 if node == destination:
-                    return path + [node]
+                    return path
                 
-                euristic_links = sorted(node.links, key=lambda link: link.config.sum(), reverse=True)
+                euristic_links = sorted(node.links, key=lambda link: link.config.sum())
                 for link in euristic_links:
                     if link.config.sum() < n_total_channels:
-                        queue.append((link.destination, path + [node]))
+                        queue.append((link.destination, path + [link]))
         return None
+
+    def generate_traffic(self, t=100, r=0.8):
+        nodes_number = len(self.nodes)
+        time = np.zeros(t, dtype=list)
+
+        for i in range(t):
+            requests = randint(0, 10*r)
+            timeslot = []
+            for j in range(requests):
+                source = randint(0, nodes_number-1)
+                while True:
+                    destination = randint(0, nodes_number-1)
+                    if destination != source:
+                        break
+                timeslot.append((source, destination))
+            time[i] = timeslot
+        return time
+
+    
+    def simulate(self):
+        # Random traffic generation
+        pass
+
     
 
 
@@ -42,6 +66,9 @@ class Link:
         self.source = source
         self.destination = destination
         self.config = np.zeros(n_total_channels, dtype=int)
+
+    def __str__(self):
+        return f"{self.source}>{self.destination}"
 
 
 if __name__ == "__main__":
@@ -67,6 +94,11 @@ if __name__ == "__main__":
                 node = network.nodes[incidence_matrix.index(elem)]
                 node.links.append(link)
 
-    solution = network.breadth_first_search(network.nodes[0], network.nodes[5])
-    print(" - ".join([str(node) for node in solution]))
-
+    #solution = network.breadth_first_search(network.nodes[0], network.nodes[5])
+    #print(" - ".join([str(node) for node in solution]))
+    # for link in solution:
+    #     pos = np.where(link.config == 0)[0][0]
+    #     link.config[pos] = 1
+    
+    time = network.generate_traffic()
+    print(time)
