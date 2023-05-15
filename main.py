@@ -7,7 +7,7 @@ from random import randint
 from config import n_data_channels, n_total_channels, start_frequency, grid_spacing, c0, quantum_receiver_bandwidth, fiber_length, fiber_attenuation, power_input,\
     fiber_dispersion, fiber_dispersion_slope, third_order_nonlinear_coefficient, degeneracy_param
 
-# plt.plot(raman_cross_section.keys(), raman_cross_section.values())
+# plt.plot(raman_cross_section_tab.keys(), raman_cross_section_tab.values())
 # plt.show()
 
 def grid_wavelength(n):
@@ -16,7 +16,7 @@ def grid_wavelength(n):
 
 def raman_cross_section(data_wavelength, quantum_wavelength):
     lambda_delta = ( (1/1550e-9) + (1/data_wavelength) - (1/quantum_wavelength) )**-1
-    result = (lambda_delta/quantum_wavelength)**4 * raman_cross_section_tab[round(lambda_delta*10**9)]
+    result = pow(lambda_delta/quantum_wavelength, 4) * raman_cross_section_tab[round(lambda_delta*10**9)]
     return result
 
 def raman_scattering(config):
@@ -52,10 +52,9 @@ def four_wave_mixing(config):
 
 def fitness_function(config):
     rs = raman_scattering(config)
-    fwm = four_wave_mixing(config)
+    #fwm = four_wave_mixing(config)
     # TODO adjacent channel crosstalk
     return rs# + fwm
-
 
 
 def simulated_annealing(init_config):
