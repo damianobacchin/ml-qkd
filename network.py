@@ -44,26 +44,23 @@ class Network:
         return time
 
     
-    def run_simulation(self, traffic):
+    def run_simulation(self, traffic, target):
+        link_traffic = []
         for t in traffic:
-
             for link in self.links:
                 link.config = np.zeros(n_total_channels, dtype=int)
-
             for request in t:
                 source = self.nodes[request[0]]
                 destination = self.nodes[request[1]]
                 solution = self.breadth_first_search(source, destination)
-
                 if solution is not None:
                     for link in solution:
                         pos = np.where(link.config == 0)[0][0]
                         link.config[pos] = 1
-                else:
-                    print('Path not found')
-        return
+            link_traffic.append(target.config)
+        return link_traffic
 
-    
+
 
 
 
@@ -118,4 +115,5 @@ if __name__ == "__main__":
     #     link.config[pos] = 1
     
     time = network.generate_traffic()
-    network.run_simulation(traffic=time)
+    tr = network.run_simulation(traffic=time, target=network.links[3])
+    print(tr)
