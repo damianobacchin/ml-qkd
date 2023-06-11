@@ -9,10 +9,13 @@ config[n_data_channels] = 2
 
 results_fwm = []
 results_srs = []
-for i in range(100):
+for i in range(6):
     np.random.shuffle(config)
-    results_fwm.append(four_wave_mixing(config))
-    results_srs.append(raman_scattering(config))
+    print('----------------------------------------')
+    print(config)
+    print('Raman scattering:', raman_scattering(config))
+    print('Four Wave mixing', four_wave_mixing(config))
+    print('----------------------------------------')
 
-print('Mean SRS noise:', np.median(results_srs))
-print('Mean FWM noise:', np.median(results_fwm))
+#print('Mean SRS noise:', np.median(results_srs))
+#print('Mean FWM noise:', np.median(results_fwm))

@@ -1,6 +1,7 @@
 import numpy as np
+from matplotlib import pyplot as plt
 from collections import deque
-from random import randint
+from random import randint, random
 from config import n_total_channels
 
 
@@ -25,8 +26,29 @@ class Network:
                     if link.config.sum() < n_total_channels:
                         queue.append((link.destination, path + [link]))
         return None
+    
+    def generate_routing_table(self):
+        routing_table = dict()
+        for source in self.nodes:
+            routing_table[source] = dict()
+            for destination in self.nodes:
+                if source != destination:
+                    queue = deque([(source, [])])
+                    visited = set([])
+                    solutions = []
+                    while queue:
+                        node, path = queue.popleft()
+                        if node not in visited:
+                            visited.add(node)
+                            if node == destination:
+                                solutions.append(path)
+                            for link in node.links:
+                                queue.append((link.destination, path + [link]))
+                    routing_table[source][destination] = solutions
+        self.routing_table = routing_table
+        return routing_table
 
-    def generate_traffic(self, t=100, r=0.8):
+    def generate_traffic(self, t=100, r=0.2):
         nodes_number = len(self.nodes)
         time = np.zeros(t, dtype=list)
 
@@ -40,6 +62,9 @@ class Network:
                     if destination != source:
                         break
                 timeslot.append((source, destination))
+                if random() < 0.8:
+                    for weigth in range(randint(1, 3)):
+                        timeslot.append((destination, source))
             time[i] = timeslot
         return time
 
@@ -115,5 +140,14 @@ if __name__ == "__main__":
     #     link.config[pos] = 1
     
     time = network.generate_traffic()
-    tr = network.run_simulation(traffic=time, target=network.links[3])
-    print(tr)
+    tr = network.run_simulation(traffic=time, target=network.links[4])
+    
+    # Generate hystogram
+    axis = []
+    for i in tr:
+        axis.append(i.sum())
+    counts, bins = np.histogram(axis, bins=n_total_channels)
+    plt.hist(bins[:-1], bins, weights=counts)
+    plt.show()
+
+    
