@@ -3,13 +3,13 @@ from matplotlib import pyplot as plt
 from collections import deque
 from random import randint, random
 from config import n_total_channels
+from main import simulated_annealing
 
 
 class Network:
     def __init__(self):
         self.nodes = []
         self.links = []
-        self.traffic = 1
     
     def breadth_first_search(self, source, destination): # Con mappa dei predecessori
         queue = deque([(source, [])])
@@ -21,9 +21,9 @@ class Network:
                 if node == destination:
                     return path
                 
-                euristic_links = sorted(node.links, key=lambda link: link.config.sum())
+                euristic_links = sorted(node.links, key=lambda link: link.channels)
                 for link in euristic_links:
-                    if link.config.sum() < n_total_channels:
+                    if link.channels < n_total_channels-1:
                         queue.append((link.destination, path + [link]))
         return None
     
@@ -48,7 +48,7 @@ class Network:
         self.routing_table = routing_table
         return routing_table
 
-    def generate_traffic(self, t=100, r=0.2):
+    def generate_traffic(self, t=10, r=0.2):
         nodes_number = len(self.nodes)
         time = np.zeros(t, dtype=list)
 
@@ -73,16 +73,15 @@ class Network:
         link_traffic = []
         for t in traffic:
             for link in self.links:
-                link.config = np.zeros(n_total_channels, dtype=int)
+                link.channels = 0
             for request in t:
                 source = self.nodes[request[0]]
                 destination = self.nodes[request[1]]
                 solution = self.breadth_first_search(source, destination)
                 if solution is not None:
                     for link in solution:
-                        pos = np.where(link.config == 0)[0][0]
-                        link.config[pos] = 1
-            link_traffic.append(target.config)
+                        link.channels += 1
+            link_traffic.append(target.channels)
         return link_traffic
 
 
@@ -103,7 +102,7 @@ class Link:
     def __init__(self, source, destination):
         self.source = source
         self.destination = destination
-        self.config = np.zeros(n_total_channels, dtype=int)
+        self.channels = 0
 
     def __str__(self):
         return f"{self.source}>{self.destination}"
@@ -143,11 +142,35 @@ if __name__ == "__main__":
     tr = network.run_simulation(traffic=time, target=network.links[4])
     
     # Generate hystogram
-    axis = []
-    for i in tr:
-        axis.append(i.sum())
-    counts, bins = np.histogram(axis, bins=n_total_channels)
-    plt.hist(bins[:-1], bins, weights=counts)
-    plt.show()
+    # axis = []
+    # for i in tr:
+    #     axis.append(i.sum())
+    # counts, bins = np.histogram(axis, bins=n_total_channels)
+    # print(counts, bins)
 
+    config_sum_channel = np.zeros(n_total_channels)
+    config_sum_quantum = np.zeros(n_total_channels)
+
+    # Make hist
+    counter = {}
+    for i in range(n_total_channels):
+        counter[i] = tr.count(i)
+
+    for channels in tr:
+        config = np.zeros(n_total_channels)
+        config[:channels] = 1
+        config[channels] = 2
+
+        annealing_result = simulated_annealing(config)
+
+        config_channels = annealing_result.copy()
+        config_channels[annealing_result == 2] = 0
+
+        config_quantum = annealing_result.copy()
+        config_quantum[annealing_result == 1] = 0
+        config_quantum[annealing_result == 2] = 1
+
+        config_sum_channel += config_channels * counter[channels] / len(tr)
+        config_sum_quantum += config_quantum * counter[channels] / len(tr)
     
+    print(config_sum_channel - config_sum_quantum)

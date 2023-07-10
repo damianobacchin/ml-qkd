@@ -51,14 +51,15 @@ def four_wave_mixing(config):
 
 def fitness_function(config):
     rs = raman_scattering(config)
-    fwm = four_wave_mixing(config)
-    return rs + fwm
+    #fwm = four_wave_mixing(config)
+    return rs# + fwm
 
 
 def simulated_annealing(init_config):
     config = init_config.copy()
+    min_config = config.copy()
 
-    for t in np.linspace(100, 1, 10000):
+    for t in np.linspace(100, 1, 5000):
         idx_a = randint(0, n_total_channels-1)
         idx_b = randint(0, n_total_channels-1)
 
@@ -69,6 +70,9 @@ def simulated_annealing(init_config):
         fitness_init = fitness_function(config)
         fitness_new = fitness_function(new_config)
 
+        if fitness_new < fitness_function(min_config):
+            min_config = new_config
+
         delta = fitness_new - fitness_init
 
         if delta < 0:
@@ -78,6 +82,8 @@ def simulated_annealing(init_config):
             if rand < exp(delta/t):
                 config = new_config
 
+    if fitness_function(min_config) < fitness_function(config):
+        return min_config
     return config
 
 # Create config
@@ -85,11 +91,11 @@ config = np.zeros(n_total_channels, dtype=int)
 config[:n_data_channels] = 1
 config[n_data_channels] = 2
 
-print('Raman scattering:', raman_scattering(config))
-print('Four wave mixing:', four_wave_mixing(config))
+#print('Raman scattering:', raman_scattering(config))
+#print('Four wave mixing:', four_wave_mixing(config))
 
 # result = simulated_annealing(config)
-# print(result)
+# print(result, fitness_function(result))
 
 # spacings = [200, 100, 50, 25, 12.5]
 # y1 = []
