@@ -55,13 +55,20 @@ def fitness_function(config):
     return rs# + fwm
 
 
-def simulated_annealing(init_config):
+def simulated_annealing(init_config, mod=False):
     config = init_config.copy()
     min_config = config.copy()
 
     for t in np.linspace(100, 1, 5000):
-        idx_a = randint(0, n_total_channels-1)
-        idx_b = randint(0, n_total_channels-1)
+        while True:
+            idx_a = randint(0, n_total_channels-1)
+            idx_b = randint(0, n_total_channels-1)
+            if mod:
+                if config[idx_a] != config[idx_b] and config[idx_a] != 2 and config[idx_b] != 2:
+                    break
+            else:
+                if config[idx_a] != config[idx_b]:
+                    break
 
         new_config = config.copy()
         new_config[idx_a] = config[idx_b]
@@ -87,37 +94,7 @@ def simulated_annealing(init_config):
     return config
 
 # Create config
-config = np.zeros(n_total_channels, dtype=int)
-config[:n_data_channels] = 1
-config[n_data_channels] = 2
-
-#print('Raman scattering:', raman_scattering(config))
-#print('Four wave mixing:', four_wave_mixing(config))
-
-# result = simulated_annealing(config)
-# print(result, fitness_function(result))
-
-# spacings = [200, 100, 50, 25, 12.5]
-# y1 = []
-# y2 = []
-# for spacing in spacings:
-#     grid_spacing = spacing * 1e9
-#     results_srs = raman_scattering(config)
-#     results_fwm = four_wave_mixing(config)
-    
-#     y1.append(np.array(results_srs))
-#     y2.append(np.array(results_fwm))
-
-# plt.plot(np.array(spacings), y1, label='SRS')
-# plt.plot(np.array(spacings), y2, label='FWM')
-
-# plt.xlabel('Grid spacing (GHz)')
-# plt.ylabel('Noise (W)')
-# plt.title('Total noise vs grid spacing')
-# plt.grid(linewidth=0.5)
-# plt.legend()
-
-# Save image
-#plt.show()
-#plt.savefig('total.png', dpi=300, bbox_inches='tight')
+# config = np.zeros(n_total_channels, dtype=int)
+# config[:n_data_channels] = 1
+# config[n_data_channels] = 2
 

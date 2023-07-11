@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from collections import deque
 from random import randint, random
 from config import n_total_channels
-from main import simulated_annealing
+from main import simulated_annealing, fitness_function
 
 
 class Network:
@@ -48,7 +48,7 @@ class Network:
         self.routing_table = routing_table
         return routing_table
 
-    def generate_traffic(self, t=10, r=0.2):
+    def generate_traffic(self, t=100, r=0.2):
         nodes_number = len(self.nodes)
         time = np.zeros(t, dtype=list)
 
@@ -156,21 +156,79 @@ if __name__ == "__main__":
     for i in range(n_total_channels):
         counter[i] = tr.count(i)
 
-    for channels in tr:
+    tot_freq = sum(counter.values())
+
+    # Ottimizzazione quantum channel
+    for n_ch in range(4, n_total_channels):
         config = np.zeros(n_total_channels)
-        config[:channels] = 1
-        config[channels] = 2
+        config[:n_ch] = 1
+        config[n_ch] = 2
 
         annealing_result = simulated_annealing(config)
-
-        config_channels = annealing_result.copy()
-        config_channels[annealing_result == 2] = 0
+        print(annealing_result)
 
         config_quantum = annealing_result.copy()
         config_quantum[annealing_result == 1] = 0
         config_quantum[annealing_result == 2] = 1
 
-        config_sum_channel += config_channels * counter[channels] / len(tr)
-        config_sum_quantum += config_quantum * counter[channels] / len(tr)
+        config_sum_quantum += config_quantum * counter[n_ch] / tot_freq
     
-    print(config_sum_channel - config_sum_quantum)
+    print(config_sum_quantum)
+
+    config = np.zeros(n_total_channels)
+    config[np.argmax(config_sum_quantum)] = 2
+
+    for n_ch in range(1, n_total_channels-2):
+        # Creazione config
+        new_config = config.copy()
+        for i in range(n_ch):
+            if new_config[i] == 0:
+                new_config[i] = 1
+            else:
+                new_config[n_total_channels-1] = 1
+        
+        # Simulated annealing
+        annealing_result = simulated_annealing(new_config, mod=True)
+        config_classic = annealing_result.copy()
+        config_classic[annealing_result == 2] = 0
+
+        print(config_classic)
+
+        config_sum_channel += config_classic * counter[n_ch] / tot_freq
+    
+    print(config_sum_channel)
+
+    hist_pos = {}
+    for i in range(n_total_channels):
+        hist_pos[i] = config_sum_channel[i]
+    sorted_hist = { k: v for k, v in sorted(hist_pos.items(), key=lambda item: item[1], reverse=True) }
+    del sorted_hist[np.argmax(config_sum_quantum)]
+
+    keys = list(sorted_hist.keys())
+    print(keys)
+
+    perc = []
+    for i in range(1, n_total_channels-1):
+        # Optimized configuration
+        config_opt = np.zeros(n_total_channels)
+        config_opt[np.argmax(config_sum_quantum)] = 2
+        for j in range(i):
+            config_opt[keys[j]] = 1
+        obj_function = fitness_function(config_opt)
+
+        # Random configuration
+        results_rnd = []
+        config_a = np.zeros(n_total_channels)
+        config_a[:i] = 1
+        config_a[i] = 2
+        for k in range(10):
+            np.random.shuffle(config_a)
+            results_rnd.append(fitness_function(config_a))
+        obj_function_rnd = np.mean(results_rnd)
+
+        # Calc percentage
+        p = (obj_function_rnd - obj_function) / obj_function_rnd
+        perc.append(p)
+
+    print(perc)
+    print(np.mean(perc))

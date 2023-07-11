@@ -1,6 +1,6 @@
 c0 = 299792458
 
-n_data_channels = 8
+n_data_channels = 1
 n_total_channels = 12
 
 start_frequency = 191.6e12
