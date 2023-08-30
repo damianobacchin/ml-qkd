@@ -1,0 +1,29 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: QKD network simulation and optimization
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Damiano
+    family-names: Bacchin
+    email: damiano.bacchin@gmail.com
+    affiliation: Ca' Foscari University of Venice
+repository-code: 'https://github.com/damianobacchin/ml-qkd.git'
+abstract: >-
+  This code provide a Python implementation of a QKD network
+  that allows coexistance of data channels and quantum
+  signals in the same optical fiber using DWDM.
+
+  Using simulated annealing algirthm, the program can find
+  the optimal data channel allocation in order to minimize
+  the noise power in the quantum channel caused by
+  non-linear third order effects, such as Spontaneous Raman
+  Scattering and Four-Wave Mixing.
+keywords:
+  - QKD
+  - Simulated Annealing
+  - DWDM optimization
