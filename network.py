@@ -1,4 +1,5 @@
 import numpy as np
+from math import sqrt
 from matplotlib import pyplot as plt
 from collections import deque
 from random import randint, random
@@ -10,8 +11,8 @@ class Network:
     def __init__(self):
         self.nodes = []
         self.links = []
-    
-    def breadth_first_search(self, source, destination): # Con mappa dei predecessori
+
+    def breadth_first_search(self, source, destination):  # Con mappa dei predecessori
         queue = deque([(source, [])])
         visited = set([])
         while queue:
@@ -20,13 +21,14 @@ class Network:
                 visited.add(node)
                 if node == destination:
                     return path
-                
-                euristic_links = sorted(node.links, key=lambda link: link.channels)
+
+                euristic_links = sorted(
+                    node.links, key=lambda link: link.channels)
                 for link in euristic_links:
                     if link.channels < n_total_channels-1:
                         queue.append((link.destination, path + [link]))
         return None
-    
+
     def generate_routing_table(self):
         routing_table = dict()
         for source in self.nodes:
@@ -48,27 +50,40 @@ class Network:
         self.routing_table = routing_table
         return routing_table
 
-    def generate_traffic(self, t=100, r=0.2):
-        nodes_number = len(self.nodes)
-        time = np.zeros(t, dtype=list)
+    def generate_traffic(self, t=1000, lam=30, s=500, w=1):
+        '''
+        t = total time (ms)
+        lam = lambda poisson distribution
+        s = transmission speed (Mbps)
+        w = mean requests weight (MB)
+        '''
 
-        for i in range(t):
-            requests = randint(0, 100*r)
-            timeslot = []
-            for j in range(requests):
+        ts = 10  # timeslot (ms)
+
+        nodes_number = len(self.nodes)
+        time = []
+        for i in range(int(t/ts)):
+            time.append([])
+
+        for i in range(int(t/ts)):
+            requests_num = np.random.poisson(lam)
+            for req in range(requests_num):
                 source = randint(0, nodes_number-1)
                 while True:
                     destination = randint(0, nodes_number-1)
                     if destination != source:
                         break
-                timeslot.append((source, destination))
-                if random() < 0.8:
-                    for weigth in range(randint(1, 3)):
-                        timeslot.append((destination, source))
-            time[i] = timeslot
+                weight = np.random.poisson(w) * 1024**2 * 8
+                bps_speed = s * 10**6
+                req_time = int(weight / bps_speed / ts*10**3) + 1
+                
+                for slot in range(req_time):
+                    try:
+                        time[i + slot].append((source, destination))
+                    except IndexError:
+                        break
         return time
 
-    
     def run_simulation(self, traffic, target):
         link_traffic = []
         for t in traffic:
@@ -85,9 +100,6 @@ class Network:
         return link_traffic
 
 
-
-
-
 class Node:
     def __init__(self, idx):
         self.idx = idx
@@ -96,7 +108,7 @@ class Node:
 
     def __str__(self):
         return str(self.idx)
-    
+
 
 class Link:
     def __init__(self, source, destination):
@@ -123,30 +135,19 @@ if __name__ == "__main__":
     for elem in incidence_matrix:
         node = Node(incidence_matrix.index(elem))
         network.nodes.append(node)
-    
+
     for elem in incidence_matrix:
         for i in range(len(elem)):
             if elem[i] == 1:
-                link = Link(network.nodes[incidence_matrix.index(elem)], network.nodes[i])
+                link = Link(
+                    network.nodes[incidence_matrix.index(elem)], network.nodes[i])
                 network.links.append(link)
                 node = network.nodes[incidence_matrix.index(elem)]
                 node.links.append(link)
 
-    #solution = network.breadth_first_search(network.nodes[0], network.nodes[5])
-    #print(" - ".join([str(node) for node in solution]))
-    # for link in solution:
-    #     pos = np.where(link.config == 0)[0][0]
-    #     link.config[pos] = 1
-    
+    print('Traffic generation...')
     time = network.generate_traffic()
-    tr = network.run_simulation(traffic=time, target=network.links[4])
-    
-    # Generate hystogram
-    # axis = []
-    # for i in tr:
-    #     axis.append(i.sum())
-    # counts, bins = np.histogram(axis, bins=n_total_channels)
-    # print(counts, bins)
+    tr = network.run_simulation(traffic=time, target=network.links[14])
 
     config_sum_channel = np.zeros(n_total_channels)
     config_sum_quantum = np.zeros(n_total_channels)
@@ -156,7 +157,22 @@ if __name__ == "__main__":
     for i in range(n_total_channels):
         counter[i] = tr.count(i)
 
+    # print(counter)
+
+    keys = list(counter.keys())
+    values = list(counter.values())
+
+    # plt.figure(figsize=(8, 5))
+    # plt.bar(keys, values)
+    # plt.grid(True, linestyle = '--', linewidth = 0.5)
+    # plt.xlabel('Numero di canali classici occupati')
+    # plt.ylabel('Frequenza assoluta')
+    # plt.savefig("plot.pdf", format="pdf", bbox_inches="tight")
+    # plt.show()
+
     tot_freq = sum(counter.values())
+
+    print('Quantum channel optimal allocation...')
 
     # Ottimizzazione quantum channel
     for n_ch in range(4, n_total_channels):
@@ -165,18 +181,20 @@ if __name__ == "__main__":
         config[n_ch] = 2
 
         annealing_result = simulated_annealing(config)
-        print(annealing_result)
+        #print(annealing_result)
 
         config_quantum = annealing_result.copy()
         config_quantum[annealing_result == 1] = 0
         config_quantum[annealing_result == 2] = 1
 
         config_sum_quantum += config_quantum * counter[n_ch] / tot_freq
-    
+
     print(config_sum_quantum)
 
     config = np.zeros(n_total_channels)
     config[np.argmax(config_sum_quantum)] = 2
+
+    print('Data channels allocation optimization...')
 
     for n_ch in range(1, n_total_channels-2):
         # Creazione config
@@ -186,17 +204,18 @@ if __name__ == "__main__":
                 new_config[i] = 1
             else:
                 new_config[n_total_channels-1] = 1
-        
+
         # Simulated annealing
         annealing_result = simulated_annealing(new_config, mod=True)
         config_classic = annealing_result.copy()
         config_classic[annealing_result == 2] = 0
 
-        print(config_classic)
-
         config_sum_channel += config_classic * counter[n_ch] / tot_freq
-    
+
     print(config_sum_channel)
+
+    #config_sum_channel = np.array([ 0, 0, 0, 0.35, 0.17, 0.17, 0, 0, 0, 0, 0, 0 ])
+    #config_sum_quantum = np.array([ 0.68, 0.51, 0, 0, 0.08, 0.99, 0.97, 0.83, 0.3, 0.16, 0.04, 0 ])
 
     hist_pos = {}
     for i in range(n_total_channels):
@@ -205,10 +224,12 @@ if __name__ == "__main__":
     del sorted_hist[np.argmax(config_sum_quantum)]
 
     keys = list(sorted_hist.keys())
-    print(keys)
+
+    print('Evaluating optimization percentage...')
 
     perc = []
-    for i in range(1, n_total_channels-1):
+    for i in tr:
+        if i == 0: continue
         # Optimized configuration
         config_opt = np.zeros(n_total_channels)
         config_opt[np.argmax(config_sum_quantum)] = 2
@@ -217,18 +238,17 @@ if __name__ == "__main__":
         obj_function = fitness_function(config_opt)
 
         # Random configuration
-        results_rnd = []
-        config_a = np.zeros(n_total_channels)
-        config_a[:i] = 1
-        config_a[i] = 2
-        for k in range(10):
-            np.random.shuffle(config_a)
-            results_rnd.append(fitness_function(config_a))
-        obj_function_rnd = np.mean(results_rnd)
+        obj_function_rnd = []
+        config_rnd = np.zeros(n_total_channels, dtype=int)
+        config_rnd[:i] = 1
+        config_rnd[i] = 2
+        for j in range(10):
+            np.random.shuffle(config_rnd)
+            obj_function_rnd.append(fitness_function(config_rnd))
+        obj_function_tot = np.mean(obj_function_rnd)
 
         # Calc percentage
-        p = (obj_function_rnd - obj_function) / obj_function_rnd
+        p = (obj_function - obj_function_rnd) / obj_function * 100
         perc.append(p)
 
-    print(perc)
     print(np.mean(perc))
